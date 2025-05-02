@@ -69,3 +69,31 @@ jobs:
 ### Secrets
 
 - `thunderstore-key`: Thunderstore API key (required)
+
+## Dependency Update Workflow
+
+The `dependency-update.yml` workflow handles automated NuGet package updates.
+
+### Usage
+
+```yaml
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly
+
+jobs:
+  update:
+    uses: CrimsonMods/actions/.github/workflows/dependency-update.yml
+    with:
+      project-path: ./YourMod.csproj
+```
+
+### Parameters
+
+- `project-path`: Path to your .csproj file (required)
+- `target-branch`: Branch to create PRs against (default: main)
+- `dotnet-version`: .NET SDK version (default: 6.0.x)
+- `include-prerelease`: Whether to include prerelease packages (default: false)
+- `specific-packages`: Space-separated list of specific packages to update (default: all packages)

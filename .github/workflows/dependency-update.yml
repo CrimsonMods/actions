@@ -1,0 +1,123 @@
+name: Dependency Update
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: 'Path to the .csproj file'
+        required: true
+        type: string
+      target-branch:
+        description: 'Branch to create PRs against'
+        required: false
+        default: 'main'
+        type: string
+      dotnet-version:
+        description: '.NET SDK version'
+        required: false
+        default: '6.0.x'
+        type: string
+      include-prerelease:
+        description: 'Whether to include prerelease packages'
+        required: false
+        default: false
+        type: boolean
+      specific-packages:
+        description: 'Specific packages to update (space-separated list). If empty, all packages will be checked.'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          
+      - name: Create branch for updates
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          BRANCH_NAME="dependency-updates-$(date +%Y%m%d)"
+          git checkout -b $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+      
+      - name: Check for dependency updates and update
+        id: update
+        run: |
+          UPDATES_FOUND=false
+          
+          if [ -z "${{ inputs.specific-packages }}" ]; then
+            # Update all packages
+            echo "Checking for updates to all packages in ${{ inputs.project-path }}"
+            if [ "${{ inputs.include-prerelease }}" == "true" ]; then
+              UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated --include-prerelease)
+            else
+              UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated)
+            fi
+            
+            if echo "$UPDATES" | grep -q "> "; then
+              UPDATES_FOUND=true
+              # Update all packages
+              if [ "${{ inputs.include-prerelease }}" == "true" ]; then
+                dotnet add ${{ inputs.project-path }} package --upgrade --include-prerelease
+              else
+                dotnet add ${{ inputs.project-path }} package --upgrade
+              fi
+            fi
+          else
+            # Update specific packages
+            for PACKAGE in ${{ inputs.specific-packages }}; do
+              echo "Checking for updates to $PACKAGE"
+              if [ "${{ inputs.include-prerelease }}" == "true" ]; then
+                UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated --include-prerelease | grep $PACKAGE)
+              else
+                UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated | grep $PACKAGE)
+              fi
+              
+              if echo "$UPDATES" | grep -q "> "; then
+                UPDATES_FOUND=true
+                # Update this package
+                if [ "${{ inputs.include-prerelease }}" == "true" ]; then
+                  dotnet add ${{ inputs.project-path }} package $PACKAGE --prerelease
+                else
+                  dotnet add ${{ inputs.project-path }} package $PACKAGE
+                fi
+              fi
+            done
+          fi
+          
+          echo "UPDATES_FOUND=$UPDATES_FOUND" >> $GITHUB_ENV
+      
+      - name: Build project
+        if: env.UPDATES_FOUND == 'true'
+        run: dotnet build ${{ inputs.project-path }} -c Release
+      
+      - name: Commit changes
+        if: env.UPDATES_FOUND == 'true'
+        run: |
+          git add ${{ inputs.project-path }}
+          git commit -m "Update NuGet dependencies [automated]"
+          git push --set-upstream origin $BRANCH_NAME
+      
+      - name: Create Pull Request
+        if: env.UPDATES_FOUND == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "Update NuGet dependencies"
+          body: |
+            This PR was automatically created by the dependency update workflow.
+            
+            It updates NuGet packages to their latest versions and verifies that the build succeeds.
+            
+            Please review the changes before merging.
+          branch: ${{ env.BRANCH_NAME }}
+          base: ${{ inputs.target-branch }}
