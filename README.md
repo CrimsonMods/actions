@@ -90,6 +90,8 @@ jobs:
       project-path: ./YourMod.csproj
 ```
 
+[What is cron?](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule)
+
 ### Parameters
 
 - `project-path`: Path to your .csproj file (required)
