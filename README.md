@@ -3,6 +3,21 @@
 
 This repository contains GitHub Actions workflows for building and releasing mods.
 
+## Versioning
+
+This CI/CD system uses GitHub's Semantic Versioning (SemVer). Version numbers are automatically incremented based on commit message prefixes:
+
+- `+semver:` + `major` or `breaking` - Increments major version (x.0.0)
+- `+semver:` + `minor` or `feature` - Increments minor version (0.x.0) 
+- `+semver:` + `patch` or `fix` - Increments patch version (0.0.x)
+
+Examples:
+```
+git commit -m "add new weapon system +semver:minor "  # 1.1.0 -> 1.2.0
+git commit -m "correct damage values +semver:patch"  # 1.2.0 -> 1.2.1
+git commit -m "rework mod API +semver:major"         # 1.2.1 -> 2.0.0
+```
+
 ## Mod Build Workflow
 
 The `mod-build.yml` workflow handles building your mod and creating GitHub releases.
