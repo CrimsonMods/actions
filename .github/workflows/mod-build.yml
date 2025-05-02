@@ -1,0 +1,91 @@
+name: Mod Build
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-versions:
+        type: string
+        default: |
+          6.0.x
+          8.0.x
+        description: 'dotnet versions to setup'
+      artifact-path:
+        type: string
+        required: true
+        description: 'Path to built DLL file (e.g., ./bin/Release/net6.0/YourMod.dll)'
+      project-name:
+        type: string
+        required: true
+        description: 'Project name (used for releases)'
+      create-release:
+        type: boolean
+        default: true
+        description: 'Whether to create a GitHub release'
+      changelog-path:
+        type: string
+        default: 'CHANGELOG.md'
+        description: 'Path to changelog file'
+      release-files:
+        type: string
+        description: 'Additional files to include in the release'
+        default: ''
+      build-configuration:
+        type: string
+        default: 'Release'
+        description: 'Build configuration'
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ inputs.dotnet-versions }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: "5.x"
+
+      - name: Determine Version
+        uses: gittools/actions/gitversion/execute@v0.9.7
+        with:
+          additionalArguments: '/updateprojectfiles /overrideconfig "mode=Mainline"'
+      
+      - name: Update Changelog Version
+        if: ${{ inputs.changelog-path != '' }}
+        run: |
+          $content = Get-Content ${{ inputs.changelog-path }} -Raw
+          $content = $content -replace "latest", "${{ env.GitVersion_SemVer }}"
+          Set-Content ${{ inputs.changelog-path }} -Value $content
+        shell: pwsh
+
+      - name: Build (${{ inputs.build-configuration }})
+        run: dotnet build . --configuration ${{ inputs.build-configuration }} -p:Version=$GitVersion_SemVer -p:LangVersion=latest
+        
+      - name: GH Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ inputs.create-release && !env.ACT && github.event_name == 'push' }}
+        with:
+          body: Automatic pre-release of ${{ env.GitVersion_SemVer }} for ${{ env.GitVersion_ShortSha }}
+          name: v${{ env.GitVersion_SemVer }}
+          files: |
+              ${{ inputs.artifact-path }}
+              ${{ inputs.changelog-path }}
+              ${{ inputs.release-files }}
+          fail_on_unmatched_files: true
+          prerelease: true
+          tag_name: v${{ env.GitVersion_SemVer }}

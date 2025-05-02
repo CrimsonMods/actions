@@ -1,0 +1,71 @@
+
+# Mod Build & Release Workflows
+
+This repository contains GitHub Actions workflows for building and releasing mods.
+
+## Mod Build Workflow
+
+The `mod-build.yml` workflow handles building your mod and creating GitHub releases.
+
+### Usage
+
+```yaml
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    uses: ./.github/workflows/mod-build.yml
+    with:
+      artifact-path: ./bin/Release/net6.0/YourMod.dll
+      project-name: YourModName
+```
+
+### Parameters
+
+- `dotnet-versions`: .NET SDK versions to setup (default: 6.0.x and 8.0.x)
+- `artifact-path`: Path to your built DLL file (required)
+- `project-name`: Name of your project (required)
+- `create-release`: Whether to create a GitHub release (default: true)
+- `changelog-path`: Path to changelog file (default: CHANGELOG.md)
+- `release-files`: Additional files to include in release
+- `build-configuration`: Build configuration (default: Release)
+
+## Mod Release Workflow
+
+The `mod-release.yml` workflow handles publishing releases to Thunderstore.
+
+### Usage
+
+```yaml
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    uses: ./.github/workflows/mod-release.yml
+    with:
+      release-tag: ${{ github.ref_name }}
+    secrets:
+      thunderstore-key: ${{ secrets.THUNDERSTORE_KEY }}
+```
+
+### Parameters
+
+- `release-tag`: Tag to release (required)
+- `dotnet-version`: .NET SDK version (default: 6.0.x)
+- `download-directory`: Directory to download release files to (default: ./dist)
+- `artifact-directory`: Directory to upload as artifact (default: ./build)
+- `package-config-path`: Optional custom path to thunderstore package config
+
+### Secrets
+
+- `thunderstore-key`: Thunderstore API key (required)

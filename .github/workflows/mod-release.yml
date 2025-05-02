@@ -1,0 +1,76 @@
+name: Mod Release
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        type: string
+        required: true
+        description: 'Tag to release'
+      dotnet-version:
+        type: string
+        default: '6.0.x'
+        description: 'The .NET version to use'
+      download-directory:
+        type: string
+        default: './dist'
+        description: 'Directory to download release files to'
+      artifact-directory:
+        type: string
+        default: './build'
+        description: 'Directory to upload as artifact'
+      package-config-path:
+        type: string
+        default: ''
+        description: 'Optional custom path to thunderstore package config'
+    secrets:
+      thunderstore-key:
+        required: true
+        description: 'Thunderstore API key'
+
+jobs:
+  release_on_thunderstore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: "5.x"
+          
+      - name: Determine Version
+        uses: gittools/actions/gitversion/execute@v0.9.7
+        with:
+          additionalArguments: '/overrideconfig "mode=Mainline"'
+          
+      - name: Download Release
+        run: gh release download ${{ inputs.release-tag }} -D ${{ inputs.download-directory }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Install tcli
+        run: dotnet tool install --global tcli
+        
+      - name: Run tcli
+        run: |
+          if [ -n "${{ inputs.package-config-path }}" ]; then
+            tcli publish --token ${{ secrets.thunderstore-key }} --package-version ${RELEASE_TAG:1} --config-path ${{ inputs.package-config-path }}
+          else
+            tcli publish --token ${{ secrets.thunderstore-key }} --package-version ${RELEASE_TAG:1}}
+          fi
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+          
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{ inputs.artifact-directory }}
