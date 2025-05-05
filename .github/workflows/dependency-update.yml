@@ -27,6 +27,11 @@ on:
         required: false
         default: ''
         type: string
+      excluded-packages:
+        description: 'Pattern for packages to exclude from updates (regex pattern)'
+        required: false
+        default: '^BepInEx'
+        type: string
 
 jobs:
   update-dependencies:
@@ -55,26 +60,49 @@ jobs:
           UPDATES_FOUND=false
           
           if [ -z "${{ inputs.specific-packages }}" ]; then
-            # Update all packages
+            # Get list of all outdated packages
             echo "Checking for updates to all packages in ${{ inputs.project-path }}"
             if [ "${{ inputs.include-prerelease }}" == "true" ]; then
-              UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated --include-prerelease)
+              OUTDATED_PACKAGES=$(dotnet list ${{ inputs.project-path }} package --outdated --include-prerelease)
             else
-              UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated)
+              OUTDATED_PACKAGES=$(dotnet list ${{ inputs.project-path }} package --outdated)
             fi
             
-            if echo "$UPDATES" | grep -q "> "; then
+            # Check if any updates are available
+            if echo "$OUTDATED_PACKAGES" | grep -q "> "; then
               UPDATES_FOUND=true
-              # Update all packages
-              if [ "${{ inputs.include-prerelease }}" == "true" ]; then
-                dotnet add ${{ inputs.project-path }} package --upgrade --include-prerelease
-              else
-                dotnet add ${{ inputs.project-path }} package --upgrade
-              fi
+              
+              # Get current packages
+              CURRENT_PACKAGES=$(dotnet list ${{ inputs.project-path }} package | grep '>' | awk '{print $2}')
+              
+              # Update each package individually, skipping excluded ones
+              for PACKAGE in $CURRENT_PACKAGES; do
+                # Skip packages matching the exclusion pattern
+                if [[ -n "${{ inputs.excluded-packages }}" && "$PACKAGE" =~ ${{ inputs.excluded-packages }} ]]; then
+                  echo "Skipping excluded package: $PACKAGE"
+                  continue
+                fi
+                
+                # Check if this package has an update
+                if echo "$OUTDATED_PACKAGES" | grep -q "> $PACKAGE"; then
+                  echo "Updating package: $PACKAGE"
+                  if [ "${{ inputs.include-prerelease }}" == "true" ]; then
+                    dotnet add ${{ inputs.project-path }} package $PACKAGE --prerelease
+                  else
+                    dotnet add ${{ inputs.project-path }} package $PACKAGE
+                  fi
+                fi
+              done
             fi
           else
             # Update specific packages
             for PACKAGE in ${{ inputs.specific-packages }}; do
+              # Skip packages matching the exclusion pattern
+              if [[ -n "${{ inputs.excluded-packages }}" && "$PACKAGE" =~ ${{ inputs.excluded-packages }} ]]; then
+                echo "Skipping excluded package: $PACKAGE"
+                continue
+              fi
+              
               echo "Checking for updates to $PACKAGE"
               if [ "${{ inputs.include-prerelease }}" == "true" ]; then
                 UPDATES=$(dotnet list ${{ inputs.project-path }} package --outdated --include-prerelease | grep $PACKAGE)
