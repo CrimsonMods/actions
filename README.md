@@ -35,7 +35,7 @@ on:
 
 jobs:
   build:
-    uses: CrimsonMods/actions/.github/workflows/mod-build.yml
+    uses: CrimsonMods/actions/.github/workflows/mod-build.yml@master
     with:
       artifact-path: ./bin/Release/net6.0/YourMod.dll
       project-name: YourModName
@@ -66,7 +66,7 @@ on:
 
 jobs:
   release:
-    uses: CrimsonMods/.github/workflows/mod-release.yml
+    uses: CrimsonMods/actions/.github/workflows/mod-release.yml@master
     with:
       release-tag: ${{ github.ref_name }}
     secrets:
@@ -100,7 +100,7 @@ on:
 
 jobs:
   update:
-    uses: CrimsonMods/actions/.github/workflows/dependency-update.yml
+    uses: CrimsonMods/actions/.github/workflows/dependency-update.yml@masteer
     with:
       project-path: ./YourMod.csproj
 ```
