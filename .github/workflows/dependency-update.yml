@@ -157,7 +157,7 @@ jobs:
       
       - name: Upload DLL as artifact
         if: env.UPDATES_FOUND == 'true' && env.DLL_FOUND == 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.DLL_NAME }}
           path: artifacts/${{ env.DLL_NAME }}
