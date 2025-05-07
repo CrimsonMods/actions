@@ -54,6 +54,9 @@ jobs:
           git checkout -b $BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
       
+      - name: Restore dependencies
+        run: dotnet restore ${{ inputs.project-path }}
+      
       - name: Check for dependency updates and update
         id: update
         run: |
