@@ -33,6 +33,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: CrimsonMods/actions/.github/workflows/mod-build.yml@master
