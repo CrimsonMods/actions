@@ -128,6 +128,41 @@ jobs:
         if: env.UPDATES_FOUND == 'true'
         run: dotnet build ${{ inputs.project-path }} -c Release
       
+      - name: Find and upload DLL
+        if: env.UPDATES_FOUND == 'true'
+        run: |
+          # Extract project directory and name from project path
+          PROJECT_DIR=$(dirname "${{ inputs.project-path }}")
+          PROJECT_NAME=$(basename "${{ inputs.project-path }}" .csproj)
+          
+          # Find the built DLL (trying common patterns)
+          DLL_PATH=$(find "$PROJECT_DIR/bin/Release" -name "$PROJECT_NAME.dll" -type f | head -n 1)
+          
+          if [ -z "$DLL_PATH" ]; then
+            echo "Could not find built DLL. Searching all bin directories..."
+            DLL_PATH=$(find "$PROJECT_DIR/bin" -name "$PROJECT_NAME.dll" -type f | head -n 1)
+          fi
+          
+          if [ -n "$DLL_PATH" ]; then
+            echo "Found DLL at: $DLL_PATH"
+            # Create artifacts directory
+            mkdir -p artifacts
+            cp "$DLL_PATH" artifacts/
+            echo "DLL_NAME=$PROJECT_NAME.dll" >> $GITHUB_ENV
+            echo "DLL_FOUND=true" >> $GITHUB_ENV
+          else
+            echo "Warning: Could not find built DLL"
+            echo "DLL_FOUND=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Upload DLL as artifact
+        if: env.UPDATES_FOUND == 'true' && env.DLL_FOUND == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.DLL_NAME }}
+          path: artifacts/${{ env.DLL_NAME }}
+          retention-days: 14
+      
       - name: Commit changes
         if: env.UPDATES_FOUND == 'true'
         run: |
@@ -147,5 +182,7 @@ jobs:
             It updates NuGet packages to their latest versions and verifies that the build succeeds.
             
             Please review the changes before merging.
+            
+            ${{ env.DLL_FOUND == 'true' && format('**Built DLL is available as a workflow artifact named `{0}`.**', env.DLL_NAME) || '**No built DLL was found.**' }}
           branch: ${{ env.BRANCH_NAME }}
           base: ${{ inputs.target-branch }}
