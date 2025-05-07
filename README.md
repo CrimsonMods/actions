@@ -29,9 +29,7 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 permissions:
   contents: write
@@ -62,16 +60,25 @@ The `mod-release.yml` workflow handles publishing releases to Thunderstore.
 
 ```yaml
 name: Release
-
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        required: true
+        description: The tag to release.
+        type: string
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   release:
     uses: CrimsonMods/actions/.github/workflows/mod-release.yml@master
     with:
-      release-tag: ${{ github.ref_name }}
+      release-tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     secrets:
       thunderstore-key: ${{ secrets.THUNDERSTORE_KEY }}
 ```
@@ -101,9 +108,13 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Run weekly
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update:
-    uses: CrimsonMods/actions/.github/workflows/dependency-update.yml@masteer
+    uses: CrimsonMods/actions/.github/workflows/dependency-update.yml@master
     with:
       project-path: ./YourMod.csproj
 ```
