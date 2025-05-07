@@ -194,7 +194,9 @@ jobs:
 
           Please review the changes before merging.
 
-          $DLL_MESSAGE"
+          $DLL_MESSAGE
+          
+          [View workflow run with artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           
           # Create PR using GitHub CLI
           echo "$PR_BODY" > pr_body.txt
