@@ -166,18 +166,12 @@ jobs:
           path: artifacts/${{ env.DLL_NAME }}
           retention-days: 14
       
-      - name: Commit changes
-        if: env.UPDATES_FOUND == 'true'
-        run: |
-          git add ${{ inputs.project-path }}
-          git commit -m "Update NuGet dependencies [automated]"
-          git push --set-upstream origin $BRANCH_NAME
-      
       - name: Create Pull Request
         if: env.UPDATES_FOUND == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update NuGet dependencies [automated]"
           title: "Update NuGet dependencies"
           body: |
             This PR was automatically created by the dependency update workflow.
@@ -189,3 +183,5 @@ jobs:
             ${{ env.DLL_FOUND == 'true' && format('**Built DLL is available as a workflow artifact named `{0}`.**', env.DLL_NAME) || '**No built DLL was found.**' }}
           branch: ${{ env.BRANCH_NAME }}
           base: ${{ inputs.target-branch }}
+          add-paths: |
+            ${{ inputs.project-path }}
