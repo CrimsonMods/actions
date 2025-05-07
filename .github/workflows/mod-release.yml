@@ -55,7 +55,7 @@ jobs:
           if [ -n "${{ inputs.package-config-path }}" ]; then
             tcli publish --token ${{ secrets.thunderstore-key }} --package-version ${RELEASE_TAG:1} --config-path ${{ inputs.package-config-path }}
           else
-            tcli publish --token ${{ secrets.thunderstore-key }} --package-version ${RELEASE_TAG:1}}
+            tcli publish --token ${{ secrets.thunderstore-key }} --package-version ${RELEASE_TAG:1}
           fi
         env:
           RELEASE_TAG: ${{ inputs.release-tag }}
