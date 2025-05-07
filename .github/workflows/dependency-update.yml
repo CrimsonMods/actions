@@ -166,22 +166,39 @@ jobs:
           path: artifacts/${{ env.DLL_NAME }}
           retention-days: 14
       
-      - name: Create Pull Request
+      - name: Commit changes and create PR
         if: env.UPDATES_FOUND == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update NuGet dependencies [automated]"
-          title: "Update NuGet dependencies"
-          body: |
-            This PR was automatically created by the dependency update workflow.
-            
-            It updates NuGet packages to their latest versions and verifies that the build succeeds.
-            
-            Please review the changes before merging.
-            
-            ${{ env.DLL_FOUND == 'true' && format('**Built DLL is available as a workflow artifact named `{0}`.**', env.DLL_NAME) || '**No built DLL was found.**' }}
-          branch: ${{ env.BRANCH_NAME }}
-          base: ${{ inputs.target-branch }}
-          add-paths: |
-            ${{ inputs.project-path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add ${{ inputs.project-path }}
+          git commit -m "Update NuGet dependencies [automated]"
+          git push --set-upstream origin $BRANCH_NAME
+          
+          # Create PR using GitHub API
+          DLL_MESSAGE=""
+          if [ "$DLL_FOUND" == "true" ]; then 
+            DLL_MESSAGE="**Built DLL is available as a workflow artifact named \`$DLL_NAME\`.**"
+          else 
+            DLL_MESSAGE="**No built DLL was found.**"
+          fi
+          
+          PR_BODY="This PR was automatically created by the dependency update workflow.
+
+          It updates NuGet packages to their latest versions and verifies that the build succeeds.
+
+          Please review the changes before merging.
+
+          $DLL_MESSAGE"
+          
+          # Create PR using the GitHub REST API
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls \
+            -d "{
+              \"title\": \"Update NuGet dependencies\",
+              \"body\": \"$PR_BODY\",
+              \"head\": \"$BRANCH_NAME\",
+              \"base\": \"${{ inputs.target-branch }}\"
+            }"
