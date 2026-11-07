@@ -128,3 +128,15 @@ jobs:
 - `dotnet-version`: .NET SDK version (default: 6.0.x)
 - `include-prerelease`: Whether to include prerelease packages (default: false)
 - `specific-packages`: Space-separated list of specific packages to update (default: all packages)
+
+## Shared games section
+
+Edit [my-games.md](snippets/my-games.md) to update the Steam cards. The [sync workflow](.github/workflows/sync-my-games.yml) opens or updates one README-only pull request per repository in its allowlist. It recognizes the existing card and link sections on the first run and replaces only the content between `<!-- games:start -->` and `<!-- games:end -->` on later runs.
+
+### One-time GitHub setup
+
+1. Register a GitHub App with **Any account** as its installation scope and disable webhooks. Grant repository **Contents** and **Pull requests** read and write access, then install it on the allowlisted repositories under `CrimsonMods` and `SkyTech6`. [GitHub App registration](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)
+2. In `CrimsonMods/actions`, add the Actions variable `README_SYNC_APP_CLIENT_ID` and the Actions secret `README_SYNC_APP_PRIVATE_KEY` using the app's client ID and private key.
+3. Run **Sync My Games READMEs** from the Actions tab on the default branch to open the initial pull requests. Subsequent changes to the snippet on `master` trigger the workflow automatically.
+
+GitHub shows the updated section after each pull request merges. Thunderstore gets the updated README with the next package built from the merged change.
