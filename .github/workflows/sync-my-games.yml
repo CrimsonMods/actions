@@ -1,0 +1,85 @@
+name: Sync My Games READMEs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - snippets/my-games.md
+      - scripts/sync-my-games.py
+      - .github/workflows/sync-my-games.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-my-games
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { owner: SkyTech6, repo: AutoBrazier }
+          - { owner: CrimsonMods, repo: CrimsonBanned }
+          - { owner: SkyTech6, repo: CrimsonChatFilter }
+          - { owner: CrimsonMods, repo: CrimsonClans }
+          - { owner: CrimsonMods, repo: CrimsonDice }
+          - { owner: SkyTech6, repo: CrimsonDropRate }
+          - { owner: CrimsonMods, repo: CrimsonEcho }
+          - { owner: CrimsonMods, repo: CrimsonFAQ }
+          - { owner: SkyTech6, repo: CrimsonFOV }
+          - { owner: CrimsonMods, repo: CrimsonHunt }
+          - { owner: CrimsonMods, repo: CrimsonKey }
+          - { owner: CrimsonMods, repo: CrimsonKiller }
+          - { owner: CrimsonMods, repo: CrimsonLog }
+          - { owner: CrimsonMods, repo: CrimsonMoon }
+          - { owner: CrimsonMods, repo: CrimsonQuest }
+          - { owner: CrimsonMods, repo: CrimsonSQL }
+          - { owner: SkyTech6, repo: OfflineRaidGuard }
+          - { owner: SkyTech6, repo: VAMP }
+
+    steps:
+      - name: Check out the shared snippet
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: source
+          persist-credentials: false
+
+      - name: Get a token for the target repository
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.README_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.README_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ matrix.owner }}
+          repositories: ${{ matrix.repo }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check out the target repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ matrix.owner }}/${{ matrix.repo }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Update the games section
+        run: python3 source/scripts/sync-my-games.py target/README.md
+
+      - name: Open or update the README pull request
+        uses: peter-evans/create-pull-request@98357b18bf14b5342f975ff684046ec3b2a07725 # v8.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          add-paths: README.md
+          branch: automation/sync-my-games
+          delete-branch: true
+          commit-message: Sync shared games section
+          title: Sync shared games section
+          body: Updates the games section from `CrimsonMods/actions/snippets/my-games.md`.
